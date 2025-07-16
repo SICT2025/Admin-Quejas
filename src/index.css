@@ -1,13 +1,32 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Press Start 2P', sans-serif;
+  background-color: #0a2204;
+  color: #f1c40f;
+  background-image: url('https://wallpapercave.com/wp/wp2769182.jpg'); /* opcional */
+  background-size: cover;
+  background-attachment: fixed;
 }
+
+
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1.5rem;
 }

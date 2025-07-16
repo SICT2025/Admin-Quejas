@@ -1,24 +1,45 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import AdminQuejas from './components/AdminQuejas';
+import Login from './components/Login';
 
 function App() {
+  /**
+   * Comprueba si el usuario es administrador según el valor almacenado en localStorage.
+   * @returns {boolean} true si es administrador, false en caso contrario.
+   */
+  const isAdmin = localStorage.getItem('isAdmin') === 'true';
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        {/* Redirige la ruta raíz siempre al login */}
+        <Route path="/" element={<Navigate to="/login" />} />
+
+        {/* Ruta para el login */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Ruta protegida para el administrador */}
+        <Route
+          path="/admin"
+          element={
+            isAdmin ? (
+              <>
+                <h1 style={{ textAlign: 'center', marginTop: '1rem' }}>
+                  Buzón de Quejas - Administrador
+                </h1>
+                <AdminQuejas />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        {/* Ruta desconocida redirige a la raíz */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </Router>
   );
 }
 
