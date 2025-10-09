@@ -9,6 +9,9 @@ const AdminQuejas = () => {
   const [quejas, setQuejas] = useState([]);
   const [quejaSeleccionada, setQuejaSeleccionada] = useState(null);
   const [nuevoEstatus, setNuevoEstatus] = useState('');
+  const [filtroRapido, setFiltroRapido] = useState('mes'); // "mes", "año", "personalizado"
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
   const navigate = useNavigate();
 
   const chartRefTipo = useRef(null);
@@ -37,50 +40,50 @@ const AdminQuejas = () => {
   }, []);
 
   const crearGrafica = (ref, datos, label) => {
-  if (!ref.current) return;
-  const ctx = ref.current.getContext('2d');
-  if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
+    if (!ref.current) return;
+    const ctx = ref.current.getContext('2d');
+    if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
 
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: Object.keys(datos),
-      datasets: [{
-        label,
-        data: Object.values(datos),
-        backgroundColor: function (context) {
-          const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, '#9b2247');
-          gradient.addColorStop(1, '#12a319ff');
-          return gradient;
-        },
-        borderRadius: 10,
-        borderColor: '#eee',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          display: false,
-          labels: { color: '#000' }
-        }
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(datos),
+        datasets: [{
+          label,
+          data: Object.values(datos),
+          backgroundColor: function (context) {
+            const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, '#9b2247');
+            gradient.addColorStop(1, '#12a319ff');
+            return gradient;
+          },
+          borderRadius: 10,
+          borderColor: '#eee',
+          borderWidth: 1
+        }]
       },
-      scales: {
-        x: {
-          ticks: { color: '#000' },
-          grid: { color: '#000' }
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: false,
+            labels: { color: '#000' }
+          }
         },
-        y: {
-          beginAtZero: true,
-          ticks: { color: '#000' },
-          grid: { color: '#000' }
+        scales: {
+          x: {
+            ticks: { color: '#000' },
+            grid: { color: '#000' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#000' },
+            grid: { color: '#000' }
+          }
         }
       }
-    }
-  });
-};
+    });
+  };
 
   useEffect(() => {
     const conteoTipo = quejas.reduce((acc, q) => {
@@ -96,75 +99,108 @@ const AdminQuejas = () => {
     crearGrafica(chartRefEstatus, conteoEstatus, 'Quejas por estatus');
   }, [quejas]);
 
-  const renderPdfChart = () => {
-  if (!pdfChartRef.current) return;
-  const ctx = pdfChartRef.current.getContext('2d');
-  if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
+  // NUEVO: Función para obtener fechas según filtro rápido
+  const getFechasFiltro = () => {
+    const hoy = new Date();
+    let inicio, fin;
+    if (filtroRapido === "mes") {
+      inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      fin = hoy;
+    } else if (filtroRapido === "año") {
+      inicio = new Date(hoy.getFullYear(), 0, 1);
+      fin = hoy;
+    } else {
+      inicio = fechaInicio ? new Date(fechaInicio) : null;
+      fin = fechaFin ? new Date(fechaFin) : null;
+    }
+    // Ajustar fin para incluir todo el día seleccionado
+    if (fin) fin.setHours(23, 59, 59, 999);
+    return { inicio, fin };
+  };
 
-  const conteoTipo = quejas.reduce((acc, q) => {
-    acc[q.tipo] = (acc[q.tipo] || 0) + 1;
-    return acc;
-  }, {});
+  // NUEVO: Filtrar quejas por fecha
+  const getQuejasFiltradas = () => {
+    const { inicio, fin } = getFechasFiltro();
+    return quejas.filter(q => {
+      if (!q.fecha) return false;
+      const fechaQ = new Date(q.fecha);
+      if (inicio && fechaQ < inicio) return false;
+      if (fin && fechaQ > fin) return false;
+      return true;
+    });
+  };
 
-  const conteoEstatus = quejas.reduce((acc, q) => {
-    acc[q.estatus] = (acc[q.estatus] || 0) + 1;
-    return acc;
-  }, {});
+  // Modifica renderPdfChart para usar las quejas filtradas
+  const renderPdfChart = (quejasFiltradas) => {
+    if (!pdfChartRef.current) return;
+    const ctx = pdfChartRef.current.getContext('2d');
+    if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
 
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: [...Object.keys(conteoTipo), ...Object.keys(conteoEstatus)],
-      datasets: [
-        {
-          label: 'Quejas por tipo',
-          data: [...Object.values(conteoTipo), ...Array(Object.keys(conteoEstatus).length).fill(0)],
-          backgroundColor: '#9b2247',
-          borderRadius: 5,
-          borderColor: '#eee',
-          borderWidth: 1
-        },
-        {
-          label: 'Quejas por estatus',
-          data: [...Array(Object.keys(conteoTipo).length).fill(0), ...Object.values(conteoEstatus)],
-          backgroundColor: '#12a319ff',
-          borderRadius: 5,
-          borderColor: '#eee',
-          borderWidth: 1
-        }
-      ]
-    },
-    options: {
-      responsive: false,
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          labels: { color: '#000' }
-        }
+    const conteoTipo = quejasFiltradas.reduce((acc, q) => {
+      acc[q.tipo] = (acc[q.tipo] || 0) + 1;
+      return acc;
+    }, {});
+
+    const conteoEstatus = quejasFiltradas.reduce((acc, q) => {
+      acc[q.estatus] = (acc[q.estatus] || 0) + 1;
+      return acc;
+    }, {});
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [...Object.keys(conteoTipo), ...Object.keys(conteoEstatus)],
+        datasets: [
+          {
+            label: 'Quejas por tipo',
+            data: [...Object.values(conteoTipo), ...Array(Object.keys(conteoEstatus).length).fill(0)],
+            backgroundColor: '#9b2247',
+            borderRadius: 5,
+            borderColor: '#eee',
+            borderWidth: 1
+          },
+          {
+            label: 'Quejas por estatus',
+            data: [...Array(Object.keys(conteoTipo).length).fill(0), ...Object.values(conteoEstatus)],
+            backgroundColor: '#12a319ff',
+            borderRadius: 5,
+            borderColor: '#eee',
+            borderWidth: 1
+          }
+        ]
       },
-      scales: {
-        x: {
-          ticks: { color: '#000' },
-          grid: { color: '#000' }
+      options: {
+        responsive: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: { color: '#000' }
+          }
         },
-        y: {
-          beginAtZero: true,
-          ticks: { color: '#000' },
-          grid: { color: '#000' }
+        scales: {
+          x: {
+            ticks: { color: '#000' },
+            grid: { color: '#000' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#000' },
+            grid: { color: '#000' }
+          }
         }
       }
-    }
-  });
-};
+    });
+  };
 
+  // Modifica generarReportePDF para usar las quejas filtradas
   const generarReportePDF = async () => {
-    renderPdfChart();
+    const quejasFiltradas = getQuejasFiltradas();
+    renderPdfChart(quejasFiltradas);
     await new Promise((r) => setTimeout(r, 300));
 
     const input = hiddenReporteRef.current;
-    
-    // Configuración optimizada para html2canvas
+
     const canvas = await html2canvas(input, { 
       scale: 2,
       useCORS: true,
@@ -220,6 +256,32 @@ const AdminQuejas = () => {
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '1rem' }}>
         <button onClick={generarReportePDF} style={{ background: '#19d150ff', color: '#fff', padding: '8px 12px', border: 'none', borderRadius: '5px' }}>Descargar PDF</button>
         <button onClick={cerrarSesion} style={{ background: '#dc3545', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '5px' }}>Cerrar sesión</button>
+      </div>
+
+      {/* Filtros de fecha */}
+      <div style={{ marginBottom: 16, background: '#fff', color: '#222', padding: 12, borderRadius: 8, display: 'inline-block' }}>
+        <label style={{ marginRight: 8 }}>Filtrar reporte por: </label>
+        <select value={filtroRapido} onChange={e => setFiltroRapido(e.target.value)} style={{ marginRight: 8 }}>
+          <option value="mes">Este mes</option>
+          <option value="año">Este año</option>
+          <option value="personalizado">Personalizado</option>
+        </select>
+        {filtroRapido === "personalizado" && (
+          <>
+            <input
+              type="date"
+              value={fechaInicio}
+              onChange={e => setFechaInicio(e.target.value)}
+              style={{ marginRight: 8 }}
+            />
+            <input
+              type="date"
+              value={fechaFin}
+              onChange={e => setFechaFin(e.target.value)}
+              style={{ marginRight: 8 }}
+            />
+          </>
+        )}
       </div>
 
       <h2 style={{ textAlign: 'center', marginBottom: '1rem', color: '#611232' }}>SICT-GTO</h2>
@@ -293,14 +355,13 @@ const AdminQuejas = () => {
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-    <img src="/SICT_horizontal.png" 
-    alt="SICT Logo" 
-    style={{ maxWidth: '400px', height: 'auto', margin: '0 auto' }} />
-  </div>
-  <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>Reporte de Quejas</h3>
-  <div style={{ marginBottom: '30px' }}>
-    <canvas ref={pdfChartRef} width={900} height={400} />
-
+          <img src="/SICT_horizontal.png" 
+            alt="SICT Logo" 
+            style={{ maxWidth: '400px', height: 'auto', margin: '0 auto' }} />
+        </div>
+        <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>Reporte de Quejas</h3>
+        <div style={{ marginBottom: '30px' }}>
+          <canvas ref={pdfChartRef} width={900} height={400} />
         </div>
         <table
           style={{
@@ -329,7 +390,7 @@ const AdminQuejas = () => {
             </tr>
           </thead>
           <tbody>
-            {quejas.map((q, rowIdx) => (
+            {getQuejasFiltradas().map((q, rowIdx) => (
               <tr key={q.folio} style={{ backgroundColor: rowIdx % 2 === 0 ? '#1e5b4f' : '#e6d194' }}>
                 {[q.folio, q.tipo, q.estatus, new Date(q.fecha).toLocaleString()].map((cell, idx) => (
                   <td
