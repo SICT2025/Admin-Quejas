@@ -333,7 +333,7 @@ const AdminQuejas = () => {
             <option value="Resuelta">Resuelta</option>
           </select>
           <br /><br />
-          <button onClick={actualizarEstatus} style={{ marginRight: '10px' }}>Actualizar</button>
+          <button onClick={actualizarEstatus} style={{ marginRight: '10px' }}>Guardar</button>
           <button onClick={() => setQuejaSeleccionada(null)}>Cancelar</button>
         </div>
       )}
